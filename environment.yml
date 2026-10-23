@@ -1,0 +1,11 @@
+name: yolov8-310p
+channels:
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - numpy==1.26.4
+      - opencv-python-headless==4.11.0.86
+      - torch==2.9.0
+      - torchvision==0.24.0

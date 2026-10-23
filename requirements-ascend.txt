@@ -1,0 +1,3 @@
+# AISBench 0.0.2 wheels used in the validated CANN 9.0.0 / Python 3.10 environment.
+aclruntime @ https://aisbench.obs.myhuaweicloud.com/packet/ais_bench_infer/0.0.2/ait/aclruntime-0.0.2-cp310-cp310-linux_aarch64.whl
+ais-bench @ https://aisbench.obs.myhuaweicloud.com/packet/ais_bench_infer/0.0.2/ait/ais_bench-0.0.2-py3-none-any.whl

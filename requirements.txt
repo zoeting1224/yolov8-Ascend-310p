@@ -1,0 +1,5 @@
+# Host-side dependencies tested on Linux aarch64 / Python 3.10.
+numpy==1.26.4
+opencv-python-headless==4.11.0.86
+torch==2.9.0
+torchvision==0.24.0
