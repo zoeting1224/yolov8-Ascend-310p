@@ -32,10 +32,12 @@
 ```text
 configs/                         AIPP 配置
 models/weights/                  PT、ONNX、普通 OM、AIPP OM
+requirements-convert.txt         PT → ONNX 的固定版本依赖
 scripts/camera_dashboard.py      在线 + 离线网页入口
 scripts/dvpp_yuyv.py             摄像头 YUYV 的 DVPP 预处理
 scripts/infer_om.py              普通 OM 单图推理与公共后处理
 scripts/check_env.py             环境、模型输入与一次推理自检
+scripts/export_pt_to_onnx.py     兼容 PyTorch 2.9 的 PT → ONNX 导出器
 scripts/convert_pt_to_om.sh      PT → ONNX → 普通 OM/AIPP OM 完整转换
 datasets/images/test/bus.jpg     自检图片
 runs/                            运行结果（默认不提交）
@@ -47,7 +49,7 @@ runs/                            运行结果（默认不提交）
 
 ```text
 models/weights/pretrained/yolov8n.pt
-                │ Ultralytics 8.0.29，opset 11，静态 640×640
+                │ Ultralytics 8.0.29，opset 11，动态 ONNX
                 ▼
 models/weights/onnx/yolov8n.onnx
                 │ ATC / Ascend310P3
@@ -57,15 +59,37 @@ models/weights/onnx/yolov8n.onnx
                             RGB888 uint8 NHWC 物理输入，用于网页推理
 ```
 
-在装有 CANN 9.0.0 的 Ascend 310P3 服务器上执行：
+仓库内的 PT 与 Ultralytics 官方 `v0.0.0/yolov8n.pt` 完全一致，SHA-256 为：
+
+```text
+31e20dde3def09e2cf938c7be6fe23d9150bbbe503982af13345706515f2ef95
+```
+
+从一个刚克隆的仓库开始，在装有 CANN 9.0.0 的 Ascend 310P3 服务器上依次执行：
 
 ```bash
+git clone https://github.com/zoeting1224/yolov8-Ascend-310p.git
+cd yolov8-Ascend-310p
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda env create -f environment.yml
 conda activate yolov8-310p
-python -m pip install "ultralytics==8.0.29" onnx onnxsim
+
+python -m pip install -r requirements-convert.txt
+python -m pip install --no-deps "ultralytics==8.0.29"
+python -m pip install -r requirements-ascend.txt
+
+source /usr/local/Ascend/cann-9.0.0/set_env.sh
 bash scripts/convert_pt_to_om.sh
 ```
 
-脚本会依次完成 PT 导出 ONNX、ONNX 合法性检查、ATC 生成普通 OM、插入静态 AIPP 生成网页使用的 OM，最后在 NPU 0 上执行一次 AIPP OM 自检。详细的分步命令、输入输出规格和版本注意事项见[模型转换说明](docs/MODEL_CONVERSION.md)。
+脚本会依次完成 PT 加载、旧版 ONNX exporter 兼容处理、ONNX 合法性检查、ATC 生成普通 OM、插入静态 AIPP 生成网页使用的 OM，最后在 NPU 0 上执行一次 AIPP OM 自检。也可以把自己的兼容 PT 作为第一个参数：
+
+```bash
+bash scripts/convert_pt_to_om.sh /absolute/path/to/your_yolov8n.pt
+```
+
+项目固定使用 Ultralytics 8.0.29。较新 Ultralytics 训练出的 PT 可能包含不同的 Python 模块路径，不能保证被旧版代码直接加载。要复现仓库的完整基线，应先使用仓库自带的 PT。详细的分步命令、输入输出规格和版本注意事项见[模型转换说明](docs/MODEL_CONVERSION.md)。
 
 ## 1. 克隆并创建环境
 

@@ -5,7 +5,7 @@ set -euo pipefail
 # Run from any directory. Override CANN_ENV or SOC_VERSION when needed.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PT_PATH="${PT_PATH:-${ROOT_DIR}/models/weights/pretrained/yolov8n.pt}"
+PT_PATH="${1:-${PT_PATH:-${ROOT_DIR}/models/weights/pretrained/yolov8n.pt}}"
 ONNX_PATH="${ROOT_DIR}/models/weights/onnx/yolov8n.onnx"
 OM_DIR="${ROOT_DIR}/models/weights/om"
 AIPP_CONFIG="${ROOT_DIR}/configs/yolov8n_rgb_aipp.cfg"
@@ -23,45 +23,12 @@ fi
 
 mkdir -p "$(dirname "${ONNX_PATH}")" "${OM_DIR}"
 
-# Ultralytics 8.0.29 exports beside the input PT. Use a temporary copy so the
-# generated ONNX can be moved to the repository's stable path without leaving
-# another ONNX file beside the original weight.
-TEMP_DIR="$(mktemp -d)"
-trap 'rm -rf "${TEMP_DIR}"' EXIT
-EXPORT_PT="${TEMP_DIR}/yolov8n.pt"
-cp "${PT_PATH}" "${EXPORT_PT}"
-
-export EXPORT_PT ONNX_PATH
-python - <<'PY'
-import os
-import shutil
-from pathlib import Path
-
-import onnx
-from ultralytics import YOLO
-
-export_pt = Path(os.environ["EXPORT_PT"])
-onnx_path = Path(os.environ["ONNX_PATH"])
-
-result = YOLO(str(export_pt)).export(
-    format="onnx",
-    imgsz=640,
-    opset=11,
-    simplify=True,
-    dynamic=False,
-)
-exported = Path(str(result))
-if not exported.is_file():
-    exported = export_pt.with_suffix(".onnx")
-if not exported.is_file():
-    raise FileNotFoundError(f"Ultralytics did not produce an ONNX file: {exported}")
-
-onnx_path.parent.mkdir(parents=True, exist_ok=True)
-shutil.copy2(exported, onnx_path)
-model = onnx.load(str(onnx_path))
-onnx.checker.check_model(model)
-print(f"ONNX check passed: {onnx_path}")
-PY
+export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
+python -u "${ROOT_DIR}/scripts/export_pt_to_onnx.py" \
+  --pt "${PT_PATH}" \
+  --output "${ONNX_PATH}" \
+  --imgsz 640 \
+  --opset 11
 
 # Vendor environment scripts can reference unset variables, so temporarily
 # disable nounset while sourcing CANN.
