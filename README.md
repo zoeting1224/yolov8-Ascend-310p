@@ -36,9 +36,36 @@ scripts/camera_dashboard.py      在线 + 离线网页入口
 scripts/dvpp_yuyv.py             摄像头 YUYV 的 DVPP 预处理
 scripts/infer_om.py              普通 OM 单图推理与公共后处理
 scripts/check_env.py             环境、模型输入与一次推理自检
+scripts/convert_pt_to_om.sh      PT → ONNX → 普通 OM/AIPP OM 完整转换
 datasets/images/test/bus.jpg     自检图片
 runs/                            运行结果（默认不提交）
 ```
+
+## 核心模型转换：PT → ONNX → OM
+
+仓库不仅提供已经验证的模型文件，也包含从原始 `yolov8n.pt` 重新生成部署模型的完整链路：
+
+```text
+models/weights/pretrained/yolov8n.pt
+                │ Ultralytics 8.0.29，opset 11，静态 640×640
+                ▼
+models/weights/onnx/yolov8n.onnx
+                │ ATC / Ascend310P3
+                ├────────► models/weights/om/yolov8n_bs1.om
+                │           FP32 NCHW Host 输入，用于单图对照
+                └────────► models/weights/om/yolov8n_bs1_aipp_rgb.om
+                            RGB888 uint8 NHWC 物理输入，用于网页推理
+```
+
+在装有 CANN 9.0.0 的 Ascend 310P3 服务器上执行：
+
+```bash
+conda activate yolov8-310p
+python -m pip install "ultralytics==8.0.29" onnx onnxsim
+bash scripts/convert_pt_to_om.sh
+```
+
+脚本会依次完成 PT 导出 ONNX、ONNX 合法性检查、ATC 生成普通 OM、插入静态 AIPP 生成网页使用的 OM，最后在 NPU 0 上执行一次 AIPP OM 自检。详细的分步命令、输入输出规格和版本注意事项见[模型转换说明](docs/MODEL_CONVERSION.md)。
 
 ## 1. 克隆并创建环境
 
